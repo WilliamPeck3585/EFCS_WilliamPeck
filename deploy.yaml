@@ -1,0 +1,111 @@
+# deploy.yaml
+---
+- name: "Apache installation avec Docker"
+  hosts: prod
+#  become: true
+  vars_files:
+    - ./vars/secret-variables.yaml
+  pre_tasks:
+# --- tags: docker ---
+    - name: INSTALL DEPENDANCES DOCKER
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+        update_cache: yes
+      tags: docker
+
+    - name: AJOUT CLE GPG DE DOCKER
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+      tags: docker
+
+    - name: AJOUT DEPOT APT DE DOCKER
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu jammy stable
+        state: present
+      tags: docker
+
+# --- tags: create ---
+    - name: CREATION DOSSIER services
+      ansible.builtin.file:
+        path: ./services
+        state: directory
+      tags: create
+
+    - name: CREATION DOSSIER monsite
+      ansible.builtin.file:
+        path: ./services/monsite
+        state: directory
+      tags: create
+
+    - name: CREATION DOSSIER conf
+      ansible.builtin.file:
+        path: ./services/monsite/conf
+        state: directory
+      tags: create
+
+    - name: CREATION DOSSIER html
+      ansible.builtin.file:
+        path: ./services/monsite/html
+        state: directory
+      tags: create
+
+    - name: CREATION DOSSIER php
+      ansible.builtin.file:
+        path: ./services/php
+        state: directory
+      tags: create
+
+# --- tags: copy ---
+    - name: COPY FICHIER compose.yaml
+      ansible.builtin.copy:
+        src: ./compose_files/compose.yaml
+        dest: ./services
+      tags: copy
+
+    - name: COPY FICHIER default.conf
+      ansible.builtin.copy:
+        src: ./compose_files/default.conf
+        dest: ./services/monsite/conf
+      tags: copy
+
+    - name: COPY FICHIER index.php
+      ansible.builtin.copy:
+        src: ./compose_files/index.php
+        dest: ./services/monsite/html
+      tags: copy
+
+    - name: COPY FICHIER Dockerfile
+      ansible.builtin.copy:
+        src: ./compose_files/Dockerfile
+        dest: ./services/php
+      tags: copy
+
+
+  tasks:
+# --- tags: docker ---
+    - name: INSTALL DOCKER
+      apt:
+        name: docker-ce
+        state: present
+        update_cache: yes
+      tags: docker
+
+    - name: DEMARRE DOCKER
+      ansible.builtin.systemd_service:
+        state: started
+        name: docker
+      tags: docker
+
+# --- tags: docker-compose ---
+    - name: run docker compose
+      community.docker.docker_compose_v2:
+        project_src: ./services
+        state: present
+        build: always
+      tags: run

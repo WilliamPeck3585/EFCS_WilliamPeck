@@ -1,0 +1,36 @@
+#compose.yaml
+---
+services:
+  php:
+    build: './php/'
+    networks:
+      - backend
+    environment:
+      - DB_USER=root
+      - DB_PASSWD=rootpassword
+    volumes:
+      - ./monsite/html:/usr/share/nginx/html
+  nginx:
+    image: nginx:alpine
+    networks:
+      - frontend
+      - backend
+    ports:
+      - "80:80"
+    volumes:
+      - ./monsite/html:/usr/share/nginx/html
+      - ./monsite/conf:/etc/nginx/conf.d
+  mariadb:
+    image: mariadb:latest
+    restart: always
+    networks:
+      - backend
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+    volumes:
+      - dbdata:/var/lib/mysql
+networks:
+  frontend:
+  backend:
+volumes:
+  dbdata:
